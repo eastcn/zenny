@@ -1,0 +1,249 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, TouchableOpacity, ScrollView, TextInput,
+  StyleSheet, SafeAreaView, Alert, Modal,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useCategoryStore } from '../../src/stores/useCategoryStore';
+import { colors, typography, spacing } from '../../src/theme';
+import { CATEGORY_ICONS, CATEGORY_COLORS } from '../../src/utils/constants';
+
+export default function CategoriesScreen() {
+  const {
+    expenseCategories, incomeCategories,
+    loadAll, createCategory, updateCategory, deleteCategory,
+  } = useCategoryStore();
+  const [tab, setTab] = useState('expense');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [formName, setFormName] = useState('');
+  const [formIcon, setFormIcon] = useState(CATEGORY_ICONS[0]);
+  const [formColor, setFormColor] = useState(CATEGORY_COLORS[0]);
+
+  useEffect(() => { loadAll(); }, []);
+
+  const categories = tab === 'expense' ? expenseCategories : incomeCategories;
+
+  const openAdd = useCallback(() => {
+    setEditId(null);
+    setFormName('');
+    setFormIcon(CATEGORY_ICONS[0]);
+    setFormColor(CATEGORY_COLORS[0]);
+    setModalVisible(true);
+  }, []);
+
+  const openEdit = useCallback((cat) => {
+    setEditId(cat.id);
+    setFormName(cat.name);
+    setFormIcon(cat.icon);
+    setFormColor(cat.color);
+    setModalVisible(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!formName.trim()) {
+      Alert.alert('提示', '请输入分类名称');
+      return;
+    }
+    if (editId) {
+      await updateCategory(editId, { name: formName.trim(), icon: formIcon, color: formColor });
+    } else {
+      await createCategory({ name: formName.trim(), icon: formIcon, color: formColor, type: tab });
+    }
+    setModalVisible(false);
+  }, [editId, formName, formIcon, formColor, tab]);
+
+  const handleDelete = useCallback((cat) => {
+    if (cat.is_preset) {
+      Alert.alert('提示', '预设分类不能删除');
+      return;
+    }
+    Alert.alert('确认删除', `确定要删除分类「${cat.name}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除', style: 'destructive',
+        onPress: async () => {
+          const success = await deleteCategory(cat.id);
+          if (!success) Alert.alert('提示', '删除失败');
+        },
+      },
+    ]);
+  }, []);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>分类管理</Text>
+      </View>
+
+      {/* Tab Toggle */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'expense' && styles.tabBtnActive]}
+          onPress={() => setTab('expense')}
+        >
+          <Text style={[styles.tabText, tab === 'expense' && styles.tabTextActive]}>支出分类</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'income' && styles.tabBtnActive]}
+          onPress={() => setTab('income')}
+        >
+          <Text style={[styles.tabText, tab === 'income' && styles.tabTextActive]}>收入分类</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.grid}>
+        {categories.map((cat) => (
+          <TouchableOpacity
+            key={cat.id}
+            style={styles.catItem}
+            onPress={() => openEdit(cat)}
+            onLongPress={() => handleDelete(cat)}
+          >
+            <View style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}>
+              <MaterialCommunityIcons name={cat.icon} size={28} color={cat.color} />
+            </View>
+            <Text style={styles.catName} numberOfLines={1}>{cat.name}</Text>
+            {cat.is_preset ? <Text style={styles.presetBadge}>预设</Text> : null}
+          </TouchableOpacity>
+        ))}
+        {/* Add Button */}
+        <TouchableOpacity style={styles.catItem} onPress={openAdd}>
+          <View style={[styles.catIcon, { backgroundColor: colors.surfaceSecondary }]}>
+            <MaterialCommunityIcons name="plus" size={28} color={colors.textSecondary} />
+          </View>
+          <Text style={styles.catName}>新增</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Add/Edit Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editId ? '编辑分类' : '新增分类'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Preview */}
+            <View style={styles.previewRow}>
+              <View style={[styles.previewIcon, { backgroundColor: formColor + '20' }]}>
+                <MaterialCommunityIcons name={formIcon} size={32} color={formColor} />
+              </View>
+              <Text style={[styles.previewName, { color: formColor }]}>{formName || '分类名称'}</Text>
+            </View>
+
+            {/* Name Input */}
+            <TextInput
+              style={styles.nameInput}
+              placeholder="分类名称"
+              placeholderTextColor={colors.textLight}
+              value={formName}
+              onChangeText={setFormName}
+              maxLength={10}
+            />
+
+            {/* Icon Picker */}
+            <Text style={styles.pickerLabel}>选择图标</Text>
+            <ScrollView style={styles.iconGrid} contentContainerStyle={styles.iconGridContent}>
+              {CATEGORY_ICONS.map((icon) => (
+                <TouchableOpacity
+                  key={icon}
+                  style={[styles.iconItem, formIcon === icon && { backgroundColor: formColor + '20', borderColor: formColor, borderWidth: 2 }]}
+                  onPress={() => setFormIcon(icon)}
+                >
+                  <MaterialCommunityIcons name={icon} size={22} color={formIcon === icon ? formColor : colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Color Picker */}
+            <Text style={styles.pickerLabel}>选择颜色</Text>
+            <View style={styles.colorRow}>
+              {CATEGORY_COLORS.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.colorItem, { backgroundColor: c }, formColor === c && styles.colorItemActive]}
+                  onPress={() => setFormColor(c)}
+                >
+                  {formColor === c && <MaterialCommunityIcons name="check" size={16} color="#fff" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSave}>
+              <Text style={styles.modalSaveBtnText}>保存</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.lg,
+    backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  headerTitle: { ...typography.h2, color: colors.text },
+  tabRow: {
+    flexDirection: 'row', margin: spacing.lg, backgroundColor: colors.surfaceSecondary,
+    borderRadius: 10, padding: 3,
+  },
+  tabBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: 8, alignItems: 'center' },
+  tabBtnActive: { backgroundColor: colors.white },
+  tabText: { ...typography.small, color: colors.textSecondary },
+  tabTextActive: { color: colors.text, fontWeight: '600' },
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md,
+  },
+  catItem: {
+    width: '25%', alignItems: 'center', paddingVertical: spacing.md,
+  },
+  catIcon: {
+    width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+  },
+  catName: { ...typography.caption, color: colors.text, textAlign: 'center' },
+  presetBadge: { fontSize: 9, color: colors.textLight, backgroundColor: colors.surfaceSecondary, borderRadius: 4, paddingHorizontal: 4, marginTop: 2 },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: spacing.xl, maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg,
+  },
+  modalTitle: { ...typography.h3, color: colors.text },
+  previewRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing.lg, gap: spacing.md,
+  },
+  previewIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  previewName: { ...typography.h3 },
+  nameInput: {
+    backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: spacing.lg,
+    ...typography.body, color: colors.text, marginBottom: spacing.lg,
+  },
+  pickerLabel: { ...typography.smallBold, color: colors.textSecondary, marginBottom: spacing.sm },
+  iconGrid: { maxHeight: 160, marginBottom: spacing.lg },
+  iconGridContent: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  iconItem: {
+    width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceSecondary,
+  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xl },
+  colorItem: {
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+  },
+  colorItemActive: { borderWidth: 3, borderColor: colors.white, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  modalSaveBtn: {
+    backgroundColor: colors.primary, borderRadius: 12, paddingVertical: spacing.lg, alignItems: 'center',
+  },
+  modalSaveBtnText: { ...typography.bodyBold, color: colors.white },
+});
