@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
+  StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTransactionStore } from '../../../src/stores/useTransactionStore';
@@ -12,10 +13,11 @@ import CategorySelector from '../../../src/components/transaction/CategorySelect
 import ImageAttachment from '../../../src/components/transaction/ImageAttachment';
 import { imageService } from '../../../src/services/imageService';
 import { imageRepo } from '../../../src/database/repositories/imageRepo';
-import { colors, typography, spacing } from '../../../src/theme';
+import { useTheme, typography, spacing } from '../../../src/theme';
 
 export default function EditTransactionScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams();
   const { getById, updateTransaction } = useTransactionStore();
   const { expenseCategories, incomeCategories, loadAll } = useCategoryStore();
@@ -101,6 +103,8 @@ export default function EditTransactionScreen() {
 
   if (!loaded) return null;
 
+  const styles = createStyles(colors);
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -180,17 +184,17 @@ export default function EditTransactionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
   },
   closeBtn: { padding: spacing.sm },
   headerTitle: { ...typography.h3, color: colors.text },
-  typeRow: { flexDirection: 'row', padding: spacing.lg, gap: spacing.md, backgroundColor: colors.white },
+  typeRow: { flexDirection: 'row', padding: spacing.lg, gap: spacing.md, backgroundColor: colors.surface },
   typeBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: 10, backgroundColor: colors.surfaceSecondary, alignItems: 'center' },
   typeBtnActive: { backgroundColor: colors.expense + '15', borderWidth: 1.5, borderColor: colors.expense },
   typeBtnIncomeActive: { backgroundColor: colors.income + '15', borderWidth: 1.5, borderColor: colors.income },
@@ -205,7 +209,7 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: spacing.lg, height: 46, gap: spacing.sm },
   dateInput: { flex: 1, ...typography.body, color: colors.text },
   noteInput: { backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: spacing.lg, ...typography.body, color: colors.text, minHeight: 80, textAlignVertical: 'top' },
-  bottomBar: { padding: spacing.lg, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  bottomBar: { padding: spacing.lg, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight },
   saveBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: spacing.lg, alignItems: 'center' },
   saveBtnText: { ...typography.bodyBold, color: colors.white },
 });

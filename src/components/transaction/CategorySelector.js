@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 
 export default function CategorySelector({ categories, selectedId, onSelect }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
@@ -30,7 +33,7 @@ export default function CategorySelector({ categories, selectedId, onSelect }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     maxHeight: 220,
   },

@@ -3,6 +3,7 @@ import { getDatabase } from '../database/connection';
 
 export const useSettingsStore = create((set, get) => ({
   currency: '¥',
+  themeMode: 'system', // 'light' | 'dark' | 'system'
   loaded: false,
 
   async load() {
@@ -18,6 +19,7 @@ export const useSettingsStore = create((set, get) => ({
     });
     set({
       currency: settings.currency || '¥',
+      themeMode: settings.themeMode || 'system',
       loaded: true,
     });
   },

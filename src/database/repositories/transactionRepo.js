@@ -141,4 +141,15 @@ export const transactionRepo = {
        ORDER BY t.date DESC, t.created_at DESC`
     );
   },
+
+  async getAvailableYears() {
+    const db = getDatabase();
+    const result = await db.getAllAsync(
+      `SELECT DISTINCT substr(date, 1, 4) as year
+       FROM transactions
+       WHERE is_deleted = 0
+       ORDER BY year DESC`
+    );
+    return result.map(r => r.year);
+  },
 };

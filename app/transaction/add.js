@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
+  StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -14,11 +15,11 @@ import SmartInput from '../../src/components/transaction/SmartInput';
 import ImageAttachment from '../../src/components/transaction/ImageAttachment';
 import { imageService } from '../../src/services/imageService';
 import { imageRepo } from '../../src/database/repositories/imageRepo';
-import { voiceService } from '../../src/services/voiceService';
-import { colors, typography, spacing } from '../../src/theme';
+import { useTheme, typography, spacing } from '../../src/theme';
 
 export default function AddTransactionScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const params = useLocalSearchParams();
   const { createTransaction } = useTransactionStore();
   const { expenseCategories, incomeCategories, loadAll } = useCategoryStore();
@@ -30,7 +31,6 @@ export default function AddTransactionScreen() {
   const [date, setDate] = useState(params.date || dayjs().format('YYYY-MM-DD'));
   const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
-  const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -62,40 +62,7 @@ export default function AddTransactionScreen() {
     if (result.note) setNote(result.note);
   }, [expenseCategories, incomeCategories]);
 
-  const handleVoicePress = useCallback(async () => {
-    const available = await voiceService.isAvailable();
-    if (!available) {
-      Alert.alert('提示', '当前设备不支持语音识别');
-      return;
-    }
-
-    if (isListening) {
-      voiceService.stopListening();
-      setIsListening(false);
-      return;
-    }
-
-    voiceService.onResult((text, isFinal) => {
-      if (isFinal && text) {
-        const allCats = [...expenseCategories, ...incomeCategories];
-        const { parseText } = require('../../src/services/textParser');
-        const result = parseText(text, allCats);
-        if (result && result.confidence > 0) {
-          handleParseResult(result);
-        } else {
-          setNote((prev) => (prev ? prev + ' ' : '') + text);
-        }
-      }
-    });
-    voiceService.onEnd(() => setIsListening(false));
-    voiceService.onError((err) => {
-      setIsListening(false);
-      Alert.alert('识别出错', String(err));
-    });
-
-    setIsListening(true);
-    await voiceService.startListening();
-  }, [isListening, expenseCategories, incomeCategories, handleParseResult]);
+  const allCategories = [...expenseCategories, ...incomeCategories];
 
   const handleAddImage = useCallback(async (fromCamera) => {
     try {
@@ -154,7 +121,7 @@ export default function AddTransactionScreen() {
     router.back();
   }, [amount, categoryId, type, note, date, images]);
 
-  const allCategories = [...expenseCategories, ...incomeCategories];
+  const styles = createStyles(colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -193,18 +160,7 @@ export default function AddTransactionScreen() {
             <SmartInput
               categories={allCategories}
               onParseResult={handleParseResult}
-              onVoicePress={handleVoicePress}
             />
-
-            {isListening && (
-              <View style={styles.listeningBar}>
-                <MaterialCommunityIcons name="microphone" size={18} color={colors.danger} />
-                <Text style={styles.listeningText}>正在聆听...</Text>
-                <TouchableOpacity onPress={handleVoicePress}>
-                  <Text style={styles.stopText}>停止</Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             {/* Amount */}
             <Text style={styles.label}>金额</Text>
@@ -274,7 +230,7 @@ export default function AddTransactionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   header: {
@@ -283,7 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
@@ -293,7 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: spacing.lg,
     gap: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   typeBtn: {
     flex: 1,
@@ -343,19 +299,9 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  listeningBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.danger + '10',
-    borderRadius: 8,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  listeningText: { ...typography.small, color: colors.danger, flex: 1 },
-  stopText: { ...typography.smallBold, color: colors.danger },
   bottomBar: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },

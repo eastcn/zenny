@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
-  StyleSheet, SafeAreaView, Alert, Modal,
+  StyleSheet, Alert, Modal, Platform, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCategoryStore } from '../../src/stores/useCategoryStore';
-import { colors, typography, spacing } from '../../src/theme';
+import { batchUpdateCategory } from '../../src/services/import/importService';
+import { useTheme, typography, spacing } from '../../src/theme';
 import { CATEGORY_ICONS, CATEGORY_COLORS } from '../../src/utils/constants';
 
 export default function CategoriesScreen() {
+  const { colors } = useTheme();
   const {
     expenseCategories, incomeCategories,
     loadAll, createCategory, updateCategory, deleteCategory,
@@ -20,7 +24,20 @@ export default function CategoriesScreen() {
   const [formIcon, setFormIcon] = useState(CATEGORY_ICONS[0]);
   const [formColor, setFormColor] = useState(CATEGORY_COLORS[0]);
 
-  useEffect(() => { loadAll(); }, []);
+  // Batch merge state
+  const [mergeModalVisible, setMergeModalVisible] = useState(false);
+  const [fromCategory, setFromCategory] = useState(null);
+  const [toCategory, setToCategory] = useState(null);
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeSuccess, setMergeSuccess] = useState(false);
+  const mergeSuccessTimer = useRef(null);
+
+  // 页面获得焦点时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [])
+  );
 
   const categories = tab === 'expense' ? expenseCategories : incomeCategories;
 
@@ -70,10 +87,107 @@ export default function CategoriesScreen() {
     ]);
   }, []);
 
+  // Batch merge functions
+  const openMergeModal = useCallback(() => {
+    setFromCategory(null);
+    setToCategory(null);
+    setMergeModalVisible(true);
+  }, []);
+
+  const handleFromCategorySelect = useCallback((cat) => {
+    setFromCategory(cat);
+    // Clear toCategory if it's the same as the newly selected fromCategory
+    setToCategory((prev) => (prev?.id === cat.id ? null : prev));
+  }, []);
+
+  const handleToCategorySelect = useCallback((cat) => {
+    setToCategory(cat);
+  }, []);
+
+  const executeMerge = useCallback(async () => {
+    console.log('[Merge] Execute merge', { fromCategory, toCategory });
+    setIsMerging(true);
+    try {
+      await batchUpdateCategory(fromCategory.id, toCategory.id);
+      await deleteCategory(fromCategory.id);
+      setIsMerging(false);
+      setMergeSuccess(true);
+      // Show success message for 1.5s then close modal
+      mergeSuccessTimer.current = setTimeout(() => {
+        setMergeModalVisible(false);
+        setMergeSuccess(false);
+        // Reset selections after successful merge
+        setFromCategory(null);
+        setToCategory(null);
+      }, 1500);
+    } catch (e) {
+      console.error('[Merge] Error:', e);
+      setIsMerging(false);
+      if (Platform.OS === 'web') {
+        window.alert('合并失败: ' + e.message);
+      } else {
+        Alert.alert('错误', '合并失败: ' + e.message);
+      }
+    }
+  }, [fromCategory, toCategory, deleteCategory]);
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (mergeSuccessTimer.current) {
+        clearTimeout(mergeSuccessTimer.current);
+      }
+    };
+  }, []);
+
+  const handleMerge = useCallback(() => {
+    console.log('[Merge] handleMerge called', { fromCategory, toCategory });
+    if (!fromCategory) {
+      if (Platform.OS === 'web') {
+        window.alert('请选择要合并的分类');
+      } else {
+        Alert.alert('提示', '请选择要合并的分类');
+      }
+      return;
+    }
+    if (!toCategory) {
+      if (Platform.OS === 'web') {
+        window.alert('请选择合并到哪个分类');
+      } else {
+        Alert.alert('提示', '请选择合并到哪个分类');
+      }
+      return;
+    }
+    if (fromCategory.id === toCategory.id) {
+      if (Platform.OS === 'web') {
+        window.alert('不能合并到同一个分类');
+      } else {
+        Alert.alert('提示', '不能合并到同一个分类');
+      }
+      return;
+    }
+
+    // Execute merge directly without confirmation dialog
+    executeMerge();
+  }, [fromCategory, toCategory, executeMerge]);
+
+  const allCategories = [...expenseCategories, ...incomeCategories];
+  // Source category: only non-preset (can be deleted)
+  const selectableCategories = allCategories.filter(c => !c.is_preset);
+  // Target category: all categories including preset (can merge to preset)
+
+  const styles = createStyles(colors);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>分类管理</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>分类管理</Text>
+          <TouchableOpacity style={styles.mergeBtn} onPress={openMergeModal}>
+            <MaterialCommunityIcons name="merge" size={20} color={colors.primary} />
+            <Text style={styles.mergeBtnText}>批量合并</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Toggle */}
@@ -179,23 +293,158 @@ export default function CategoriesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Batch Merge Modal */}
+      <Modal visible={mergeModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>批量合并分类</Text>
+              <TouchableOpacity onPress={() => setMergeModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.mergeHint}>
+                将一个分类的所有记录合并到另一个分类，源分类将被删除
+              </Text>
+
+              {/* From Category */}
+              <Text style={styles.mergeLabel}>选择要合并的分类</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mergeScroll}>
+                <View style={styles.mergeRow}>
+                  {selectableCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.mergeCatItem,
+                        fromCategory?.id === cat.id && styles.mergeCatItemSelected,
+                      ]}
+                      onPress={() => handleFromCategorySelect(cat)}
+                    >
+                      <MaterialCommunityIcons
+                        name={cat.icon}
+                        size={20}
+                        color={fromCategory?.id === cat.id ? colors.white : cat.color}
+                      />
+                      <Text
+                        style={[
+                          styles.mergeCatText,
+                          fromCategory?.id === cat.id && styles.mergeCatTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+
+              {/* Arrow */}
+              <View style={styles.mergeArrow}>
+                <MaterialCommunityIcons name="arrow-down" size={24} color={colors.textSecondary} />
+                <Text style={styles.mergeArrowText}>合并到</Text>
+                <MaterialCommunityIcons name="arrow-down" size={24} color={colors.textSecondary} />
+              </View>
+
+              {/* To Category */}
+              <Text style={styles.mergeLabel}>选择目标分类</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mergeScroll}>
+                <View style={styles.mergeRow}>
+                  {allCategories
+                    .filter(c => c.id !== fromCategory?.id)
+                    .map((cat) => (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={[
+                          styles.mergeCatItem,
+                          toCategory?.id === cat.id && styles.mergeCatItemSelected,
+                        ]}
+                        onPress={() => handleToCategorySelect(cat)}
+                      >
+                        <MaterialCommunityIcons
+                          name={cat.icon}
+                          size={20}
+                          color={toCategory?.id === cat.id ? colors.white : cat.color}
+                        />
+                        <Text
+                          style={[
+                            styles.mergeCatText,
+                            toCategory?.id === cat.id && styles.mergeCatTextSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {cat.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              </ScrollView>
+            </ScrollView>
+
+            {/* Merge button with loading and success states */}
+            {mergeSuccess ? (
+              <View style={[styles.modalSaveBtn, styles.modalSaveBtnSuccess]}>
+                <MaterialCommunityIcons name="check-circle" size={20} color={colors.white} style={styles.successIcon} />
+                <Text style={styles.modalSaveBtnText}>合并成功</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.modalSaveBtn,
+                  (!fromCategory || !toCategory || isMerging) && styles.modalSaveBtnDisabled,
+                ]}
+                onPress={handleMerge}
+                disabled={!fromCategory || !toCategory || isMerging}
+              >
+                {isMerging ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.modalSaveBtnText}>确认合并</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.lg, paddingVertical: spacing.lg,
-    backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
   },
   headerTitle: { ...typography.h2, color: colors.text },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mergeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    gap: 4,
+  },
+  mergeBtnText: {
+    ...typography.small,
+    color: colors.primary,
+    fontWeight: '500',
+  },
   tabRow: {
     flexDirection: 'row', margin: spacing.lg, backgroundColor: colors.surfaceSecondary,
     borderRadius: 10, padding: 3,
   },
   tabBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: 8, alignItems: 'center' },
-  tabBtnActive: { backgroundColor: colors.white },
+  tabBtnActive: { backgroundColor: colors.surface },
   tabText: { ...typography.small, color: colors.textSecondary },
   tabTextActive: { color: colors.text, fontWeight: '600' },
   grid: {
@@ -213,7 +462,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: spacing.xl, maxHeight: '85%',
   },
   modalHeader: {
@@ -245,5 +494,68 @@ const styles = StyleSheet.create({
   modalSaveBtn: {
     backgroundColor: colors.primary, borderRadius: 12, paddingVertical: spacing.lg, alignItems: 'center',
   },
+  modalSaveBtnDisabled: {
+    backgroundColor: colors.textLight,
+  },
   modalSaveBtnText: { ...typography.bodyBold, color: colors.white },
+  // Merge modal styles
+  mergeHint: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  mergeLabel: {
+    ...typography.smallBold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  mergeScroll: {
+    marginBottom: spacing.lg,
+  },
+  mergeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  mergeCatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSecondary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    gap: 4,
+    minWidth: 60,
+  },
+  mergeCatItemSelected: {
+    backgroundColor: colors.primary,
+  },
+  mergeCatText: {
+    ...typography.small,
+    color: colors.text,
+  },
+  mergeCatTextSelected: {
+    color: colors.white,
+  },
+  modalSaveBtnSuccess: {
+    backgroundColor: colors.success,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  successIcon: {
+    marginRight: 4,
+  },
+  mergeArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  mergeArrowText: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
 });

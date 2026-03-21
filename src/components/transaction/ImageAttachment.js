@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, spacing } from '../../theme';
+import { useTheme, spacing } from '../../theme';
 
 export default function ImageAttachment({ images, onAddFromCamera, onAddFromLibrary, onRemove, readonly }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
       {images.map((img, index) => (
@@ -40,7 +43,7 @@ export default function ImageAttachment({ images, onAddFromCamera, onAddFromLibr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     paddingVertical: spacing.sm,
@@ -61,7 +64,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 10,
   },
   addButtons: {

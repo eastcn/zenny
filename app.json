@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "MyMoneyKeeper",
+    "name": "Zenny",
     "slug": "mymoneykeeper",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "scheme": "mymoneykeeper",
+    "userInterfaceStyle": "automatic",
+    "scheme": "zenny",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -21,7 +21,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.yxdeast.zenny"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -31,6 +32,12 @@
       "expo-router",
       "expo-sqlite",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f56f6953-624a-40e0-8558-272ed7e4c350"
+      }
+    }
   }
 }

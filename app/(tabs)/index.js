@@ -1,6 +1,7 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCalendarStore } from '../../src/stores/useCalendarStore';
 import { useTransactionStore } from '../../src/stores/useTransactionStore';
@@ -9,31 +10,32 @@ import { useSettingsStore } from '../../src/stores/useSettingsStore';
 import CalendarHeader from '../../src/components/calendar/CalendarHeader';
 import CalendarGrid from '../../src/components/calendar/CalendarGrid';
 import TransactionList from '../../src/components/transaction/TransactionList';
-import { colors, typography, spacing } from '../../src/theme';
+import { useTheme, typography, spacing } from '../../src/theme';
 import { formatDateChinese, getWeekDayName } from '../../src/utils/formatters';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const {
     currentYear, currentMonth, selectedDate,
     dailySummaryMap, monthlyTotal,
-    prevMonth, nextMonth, selectDate, loadSummary,
+    prevMonth, nextMonth, selectDate, loadSummary, setMonth,
   } = useCalendarStore();
   const { currentList, loadByDate } = useTransactionStore();
   const { loadAll: loadCategories } = useCategoryStore();
   const { load: loadSettings } = useSettingsStore();
 
-  useEffect(() => {
-    loadCategories();
-    loadSettings();
-    loadSummary();
-  }, []);
-
-  useEffect(() => {
-    if (selectedDate) {
-      loadByDate(selectedDate);
-    }
-  }, [selectedDate]);
+  // 页面获得焦点时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      loadCategories();
+      loadSettings();
+      loadSummary();
+      if (selectedDate) {
+        loadByDate(selectedDate);
+      }
+    }, [selectedDate])
+  );
 
   const handleSelectDate = useCallback((date) => {
     selectDate(date);
@@ -47,10 +49,16 @@ export default function HomeScreen() {
     router.push({ pathname: '/transaction/add', params: { date: selectedDate } });
   }, [selectedDate]);
 
+  const handleMonthSelect = useCallback((year, month) => {
+    setMonth(year, month);
+  }, [setMonth]);
+
   // Calculate selected day summary
   const selectedDaySummary = dailySummaryMap[selectedDate];
   const dayExpense = selectedDaySummary?.expense || 0;
   const dayIncome = selectedDaySummary?.income || 0;
+
+  const styles = createStyles(colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,6 +67,7 @@ export default function HomeScreen() {
         month={currentMonth}
         onPrev={prevMonth}
         onNext={nextMonth}
+        onMonthSelect={handleMonthSelect}
         monthlyTotal={monthlyTotal}
       />
       <CalendarGrid
@@ -90,13 +99,13 @@ export default function HomeScreen() {
         />
       </View>
       <TouchableOpacity style={styles.fab} onPress={handleAdd} activeOpacity={0.8}>
-        <MaterialCommunityIcons name="plus" size={28} color={colors.white} />
+        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -107,7 +116,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
@@ -122,7 +131,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   fab: {
     position: 'absolute',

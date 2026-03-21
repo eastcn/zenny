@@ -1,11 +1,25 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 
-export default function CalendarHeader({ year, month, onPrev, onNext, monthlyTotal }) {
+export default function CalendarHeader({ year, month, onPrev, onNext, onMonthSelect, monthlyTotal }) {
+  const { colors } = useTheme();
+  const [pickerVisible, setPickerVisible] = useState(false);
   const expense = monthlyTotal?.total_expense || 0;
   const income = monthlyTotal?.total_income || 0;
+
+  // Generate years: current year and 2 years back
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear, currentYear - 1, currentYear - 2];
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  const handleMonthPress = (y, m) => {
+    onMonthSelect(y, m);
+    setPickerVisible(false);
+  };
+
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -13,7 +27,10 @@ export default function CalendarHeader({ year, month, onPrev, onNext, monthlyTot
         <TouchableOpacity onPress={onPrev} style={styles.arrowBtn}>
           <MaterialCommunityIcons name="chevron-left" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.monthText}>{year}年{month}月</Text>
+        <TouchableOpacity onPress={() => setPickerVisible(true)} style={styles.monthBtn}>
+          <Text style={styles.monthText}>{year}年{month}月</Text>
+          <MaterialCommunityIcons name="chevron-down" size={18} color={colors.textSecondary} style={styles.dropdownIcon} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={onNext} style={styles.arrowBtn}>
           <MaterialCommunityIcons name="chevron-right" size={28} color={colors.text} />
         </TouchableOpacity>
@@ -36,13 +53,54 @@ export default function CalendarHeader({ year, month, onPrev, onNext, monthlyTot
           </Text>
         </View>
       </View>
+
+      {/* Month Picker Modal */}
+      <Modal visible={pickerVisible} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPickerVisible(false)}
+        >
+          <View style={styles.pickerContainer}>
+            <Text style={styles.pickerTitle}>选择月份</Text>
+            <ScrollView style={styles.pickerScroll}>
+              {years.map((y) => (
+                <View key={y} style={styles.yearRow}>
+                  <Text style={styles.yearLabel}>{y}年</Text>
+                  <View style={styles.monthsGrid}>
+                    {months.map((m) => (
+                      <TouchableOpacity
+                        key={`${y}-${m}`}
+                        style={[
+                          styles.monthItem,
+                          y === year && m === month && styles.monthItemSelected,
+                        ]}
+                        onPress={() => handleMonthPress(y, m)}
+                      >
+                        <Text
+                          style={[
+                            styles.monthItemText,
+                            y === year && m === month && styles.monthItemTextSelected,
+                          ]}
+                        >
+                          {m}月
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
@@ -58,12 +116,19 @@ const styles = StyleSheet.create({
   arrowBtn: {
     padding: spacing.sm,
   },
+  monthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   monthText: {
     ...typography.h3,
     color: colors.text,
-    marginHorizontal: spacing.xl,
-    minWidth: 100,
-    textAlign: 'center',
+    marginHorizontal: spacing.sm,
+  },
+  dropdownIcon: {
+    marginLeft: 2,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -87,5 +152,57 @@ const styles = StyleSheet.create({
     width: 1,
     height: 28,
     backgroundColor: colors.borderLight,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+    width: 320,
+    maxHeight: 400,
+  },
+  pickerTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  pickerScroll: {
+    maxHeight: 320,
+  },
+  yearRow: {
+    marginBottom: spacing.md,
+  },
+  yearLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  monthsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  monthItem: {
+    width: '25%',
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  monthItemSelected: {
+    backgroundColor: colors.primary + '15',
+  },
+  monthItemText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  monthItemTextSelected: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

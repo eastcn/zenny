@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import TransactionItem from './TransactionItem';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 
 export default function TransactionList({ data, onItemPress, emptyText }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   if (!data || data.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -25,7 +28,7 @@ export default function TransactionList({ data, onItemPress, emptyText }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   list: {
     flex: 1,
   },

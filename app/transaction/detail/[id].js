@@ -1,29 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, Image, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert,
+  StyleSheet, Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTransactionStore } from '../../../src/stores/useTransactionStore';
 import { useCalendarStore } from '../../../src/stores/useCalendarStore';
-import { colors, typography, spacing } from '../../../src/theme';
+import { useTheme, typography, spacing } from '../../../src/theme';
 import { formatDate } from '../../../src/utils/formatters';
 
 export default function TransactionDetailScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams();
   const { getById, deleteTransaction } = useTransactionStore();
   const { loadSummary } = useCalendarStore();
   const [tx, setTx] = useState(null);
 
-  useEffect(() => {
-    async function loadTx() {
-      const data = await getById(id);
-      setTx(data);
-    }
-    loadTx();
-  }, [id]);
+  // 页面获得焦点时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      async function loadTx() {
+        const data = await getById(id);
+        setTx(data);
+      }
+      loadTx();
+    }, [id])
+  );
 
   const handleEdit = () => {
     router.push(`/transaction/edit/${id}`);
@@ -43,6 +48,8 @@ export default function TransactionDetailScreen() {
       },
     ]);
   };
+
+  const styles = createStyles(colors);
 
   if (!tx) {
     return (
@@ -128,13 +135,13 @@ export default function TransactionDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
   },
   closeBtn: { padding: spacing.sm },
   headerTitle: { ...typography.h3, color: colors.text },
@@ -149,8 +156,8 @@ const styles = StyleSheet.create({
   },
   categoryName: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.sm },
   amountText: { fontSize: 32, fontWeight: '700', marginBottom: spacing.sm },
-  typeTag: { ...typography.caption, color: colors.textSecondary, backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: spacing.md, paddingVertical: 2 },
-  infoSection: { backgroundColor: colors.white, marginHorizontal: spacing.lg, borderRadius: 12, padding: spacing.lg },
+  typeTag: { ...typography.caption, color: colors.textSecondary, backgroundColor: colors.surface, borderRadius: 6, paddingHorizontal: spacing.md, paddingVertical: 2 },
+  infoSection: { backgroundColor: colors.surface, marginHorizontal: spacing.lg, borderRadius: 12, padding: spacing.lg },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md },
   infoLabel: { ...typography.body, color: colors.textSecondary },
   infoValue: { ...typography.body, color: colors.text, fontWeight: '500', flex: 1, textAlign: 'right' },

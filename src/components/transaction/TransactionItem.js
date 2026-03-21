@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 
 export default function TransactionItem({ item, onPress }) {
+  const { colors } = useTheme();
   const isExpense = item.type === 'expense';
+  const styles = createStyles(colors);
 
   return (
     <TouchableOpacity style={styles.container} onPress={() => onPress?.(item)} activeOpacity={0.6}>
@@ -28,13 +30,13 @@ export default function TransactionItem({ item, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   iconWrap: {
     width: 40,

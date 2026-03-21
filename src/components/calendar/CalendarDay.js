@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 
 export default function CalendarDay({ date, isCurrentMonth, isToday, isSelected, summary, onPress }) {
+  const { colors } = useTheme();
   if (!date) {
     return <View style={styles.cell} />;
   }
@@ -12,6 +13,8 @@ export default function CalendarDay({ date, isCurrentMonth, isToday, isSelected,
   const expense = summary?.expense || 0;
   const income = summary?.income || 0;
   const hasData = expense > 0 || income > 0;
+
+  const styles = createStyles(colors);
 
   return (
     <TouchableOpacity
@@ -58,7 +61,7 @@ function formatShort(amount) {
   return amount.toFixed(0);
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   cell: {
     flex: 1,
     minHeight: 58,

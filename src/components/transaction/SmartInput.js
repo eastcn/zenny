@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 import { parseText } from '../../services/textParser';
 
 export default function SmartInput({ categories, onParseResult, onVoicePress }) {
+  const { colors } = useTheme();
   const [text, setText] = useState('');
   const [parseResult, setParseResult] = useState(null);
+  const styles = createStyles(colors);
 
   const handleTextChange = useCallback((val) => {
     setText(val);
@@ -74,7 +76,7 @@ export default function SmartInput({ categories, onParseResult, onVoicePress }) 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     marginBottom: spacing.md,
   },
@@ -115,7 +117,7 @@ const styles = StyleSheet.create({
   resultTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 6,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,

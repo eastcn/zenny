@@ -3,7 +3,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 // Add wasm support for expo-sqlite web
-config.resolver.assetExts = [...(config.resolver.assetExts || []), 'wasm'];
+config.resolver.assetExts = (config.resolver.assetExts || []).concat(['wasm']);
 
 // Add COOP/COEP headers for SharedArrayBuffer (required by expo-sqlite web)
 config.server = config.server || {};

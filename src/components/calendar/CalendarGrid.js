@@ -2,12 +2,15 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
 import CalendarDay from './CalendarDay';
-import { colors, typography, spacing } from '../../theme';
+import { useTheme, typography, spacing } from '../../theme';
 import { WEEK_DAYS } from '../../utils/constants';
 
 export default function CalendarGrid({ year, month, selectedDate, dailySummaryMap, onSelectDate }) {
+  const { colors } = useTheme();
   const weeks = useMemo(() => buildCalendarWeeks(year, month), [year, month]);
   const today = dayjs().format('YYYY-MM-DD');
+
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -59,9 +62,9 @@ function buildCalendarWeeks(year, month) {
   return weeks;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
   },

@@ -52,6 +52,23 @@ export const MIGRATIONS = [
       `);
     },
   },
+  {
+    version: 2,
+    up: async (db) => {
+      try {
+        const cols = await db.getAllAsync('PRAGMA table_info(transactions)');
+        const colNames = cols.map(c => c.name);
+        if (!colNames.includes('source')) {
+          await db.execAsync('ALTER TABLE transactions ADD COLUMN source TEXT');
+        }
+        if (!colNames.includes('source_raw')) {
+          await db.execAsync('ALTER TABLE transactions ADD COLUMN source_raw TEXT');
+        }
+      } catch (e) {
+        // Columns may already exist, ignore error
+      }
+    },
+  },
 ];
 
 export async function runMigrations(db) {
