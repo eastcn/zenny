@@ -11,6 +11,7 @@ import { useCalendarStore } from '../src/stores/useCalendarStore';
 import { useTheme, typography, spacing } from '../src/theme';
 
 const FILE_TYPE_LABELS = {
+  zenny: 'Zenny 导出',
   alipay: '支付宝',
   wechat: '微信支付',
   jd: '京东',
@@ -135,6 +136,7 @@ export default function ImportScreen() {
           <Text style={styles.sectionTitle}>支持的格式</Text>
           <View style={styles.formatGrid}>
             {[
+              { icon: 'wallet-outline', label: 'Zenny 导出', desc: 'CSV 格式' },
               { icon: 'cash', label: '支付宝', desc: 'CSV 格式' },
               { icon: 'chat-outline', label: '微信支付', desc: 'XLSX 格式' },
               { icon: 'shopping-outline', label: '京东', desc: 'CSV 格式' },

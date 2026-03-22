@@ -5,6 +5,7 @@ import { parseAlipayCSV, detectAlipayType } from './alipayParser';
 import { parseWeChatXLSX, detectWeChatType } from './wechatParser';
 import { parseTotalBeltCSV, detectTotalBeltType } from './totalBeltParser';
 import { parseJDCVS, detectJDType } from './jdParser';
+import { parseZennyCSV, detectZennyType, isZennyExportFile } from './zennyParser';
 
 export async function pickImportFile() {
   const result = await DocumentPicker.getDocumentAsync({
@@ -27,6 +28,7 @@ export async function pickImportFile() {
 
 export function detectFileType(filename) {
   const lower = (filename || '').toLowerCase();
+  if (lower.includes('记账数据') || lower.includes('zenny')) return 'zenny';
   if (lower.includes('支付宝')) return 'alipay';
   if (lower.includes('微信')) return 'wechat';
   if (lower.includes('京东')) return 'jd';
@@ -41,7 +43,11 @@ export async function parseFile(uri, filename) {
   console.log('[Import] Parsing file:', filename, 'type:', fileType);
 
   try {
-    if (fileType === 'alipay') {
+    if (fileType === 'zenny') {
+      rows = await parseZennyCSV(uri);
+      console.log('[Import] Zenny parsed rows:', rows.length);
+      rows = detectZennyType(rows);
+    } else if (fileType === 'alipay') {
       rows = await parseAlipayCSV(uri);
       console.log('[Import] Alipay parsed rows:', rows.length);
       rows = detectAlipayType(rows);
@@ -58,10 +64,17 @@ export async function parseFile(uri, filename) {
       console.log('[Import] TotalBelt parsed rows:', rows.length);
       rows = detectTotalBeltType(rows);
     } else {
-      // Try totalBelt as fallback
-      rows = await parseTotalBeltCSV(uri);
-      console.log('[Import] Fallback parsed rows:', rows.length);
-      rows = detectTotalBeltType(rows);
+      // Try zenny first as fallback (check by content)
+      rows = await parseZennyCSV(uri);
+      if (rows.length > 0) {
+        console.log('[Import] Fallback Zenny parsed rows:', rows.length);
+        rows = detectZennyType(rows);
+      } else {
+        // Try totalBelt as fallback
+        rows = await parseTotalBeltCSV(uri);
+        console.log('[Import] Fallback TotalBelt parsed rows:', rows.length);
+        rows = detectTotalBeltType(rows);
+      }
     }
   } catch (e) {
     console.error('[Import] Parse error:', e);

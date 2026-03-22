@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Platform, TextInput, Modal,
+  Platform, TextInput, Modal, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,10 +34,14 @@ export default function SettingsScreen() {
       await exportService.exportCSV();
       if (Platform.OS === 'web') {
         window.alert('数据已导出');
+      } else {
+        Alert.alert('导出成功', '数据已导出');
       }
     } catch (e) {
       if (Platform.OS === 'web') {
         window.alert('导出失败: ' + e.message);
+      } else {
+        Alert.alert('导出失败', e.message || '导出过程中发生错误');
       }
     }
   };
